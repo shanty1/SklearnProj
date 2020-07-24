@@ -80,8 +80,8 @@ y = y.ravel() #转一维
 models=[
     # LinearRegression(normalize=True),
     # KNeighborsRegressor(leaf_size=50),
-        # GridSearchCV(SVR(), param_grid={"kernel": ("linear", 'rbf'),
-        #             "C": np.logspace(0, 1, 3), "gamma": np.logspace(-3, 3, 7)})
+        GridSearchCV(SVR(), param_grid={"kernel": ("linear", 'rbf'),
+                    "C": np.logspace(0, 1, 3), "gamma": np.logspace(-3, 3, 7)})
         # SVR(C=1000,gamma=1e-2),
         # Ridge(alpha=0.0001,max_iter=5000, random_state=seed),
         # Lasso(alpha=0.0001,max_iter=50000, random_state=seed),
@@ -93,28 +93,19 @@ models=[
         # AdaBoostRegressor(random_state=seed),
         # GradientBoostingRegressor(random_state=seed),
         # BaggingRegressor(random_state=seed),
-        VotingRegressor(estimators=[
-                ("gbdt",GradientBoostingRegressor(random_state=seed)),
-                ("RandomForest",RandomForestRegressor(random_state=seed)),
-                ("mlp", MLPRegressor(hidden_layer_sizes=(100,200,50,20),max_iter=1000,random_state=seed)),
-                ("tree",DecisionTreeRegressor(random_state=seed)),
-                ("ridge", Ridge(random_state=seed)),
-            ]
-        ),
-        StackingRegressor(estimators=[
-                ("gbdt",GradientBoostingRegressor(random_state=seed)),
-                ("RandomForest",RandomForestRegressor(random_state=seed)),
-                ("mlp", MLPRegressor(hidden_layer_sizes=(100,200,50,20),max_iter=1000,random_state=seed)),
-                ("tree",DecisionTreeRegressor(random_state=seed)),
-                ("ridge", Ridge(alpha=0.01,max_iter=5000, random_state=seed)),
-            ],  final_estimator=None),
-        StackingRegressor(estimators=[
-                ("gbdt",XGBRegressor(random_state=seed)),
-                ("RandomForest",RandomForestRegressor(random_state=seed)),
-                ("mlp", MLPRegressor(hidden_layer_sizes=(100,200,50,20),max_iter=1000,random_state=seed)),
-                ("tree",DecisionTreeRegressor(random_state=seed)),
-                ("ridge", Ridge(alpha=0.01,max_iter=5000, random_state=seed)),
-            ],  final_estimator=None)
+        # VotingRegressor(estimators=[
+        #         ("gbdt",GradientBoostingRegressor(random_state=seed)),
+        #         ("RandomForest",RandomForestRegressor(random_state=seed)),
+        #         ("mlp", MLPRegressor(hidden_layer_sizes=(100,200,50,20),max_iter=1000,random_state=seed)),
+        #         ("ridge", Ridge(random_state=seed)),
+        #     ],n_jobs=-1
+        # ),
+        # StackingRegressor(estimators=[
+        #         ("gbdt",GradientBoostingRegressor(random_state=seed)),
+        #         ("RandomForest",RandomForestRegressor(random_state=seed)),
+        #         ("mlp", MLPRegressor(hidden_layer_sizes=(100,200,50,20),max_iter=1000,random_state=seed)),
+        #         ("ridge", Ridge(alpha=0.01,max_iter=5000, random_state=seed)),
+        #     ],  final_estimator=None, n_jobs=-1),
 ]
 models_str=[
             # 'LinearRegression'
@@ -153,13 +144,20 @@ def train(times):
             print(name)
             print("\t验证集MSE：{:.3f} R2：{:.3f}".format(mse(y_vals, y_val_pres), r2_score(y_vals, y_val_pres)))
             print("\t测试集MSE：{:.3f} R2：{:.3f}".format(mse(y_test, y_test_p), model.score(x_test, y_test)))
-            joblib.dump(model, 'save/%s.model'%(name, datetime.datetime.now('%Y-%m-%d %H:%M:%S')))
+            joblib.dump(model, 'save/%s.model'%name)
 
+def search_best_params(gridcv=None):
+    gridcv = GridSearchCV(SVR(),cv=10,n_jobs=-1,
+                        param_grid={"kernel": ("linear", 'rbf'),"C": np.logspace(0, 10, 10),
+                                    "gamma": np.logspace(-3, 3, 10)})
+    gridcv.fit(x, y)
+    print(gridcv.best_params_, '\n', gridcv.best_score_)
 
 if __name__ == '__main__':
     seed = None
     datafilepath = './data/HRB95.txt'
-    train(1)
+    # train(1)
+    search_best_params()
 
 '''
 # 十折交叉验证
