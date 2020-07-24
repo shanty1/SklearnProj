@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import random
+import datetime
 import matplotlib.pyplot as plt
 import os
 import joblib
@@ -53,7 +54,8 @@ np.random.seed(seed)
 # x = data[:,1:data.shape[1]]
 # y = data[:,0]
 label_flag = 'OUT'
-data=pd.read_table('./data/HRB95.txt',sep=',' )
+datafilepath = './data/HRB95.txt'
+data=pd.read_table(datafilepath,sep=',' )
 x=data.loc[:,data.columns!=label_flag]
 y=data.loc[:,label_flag]
 
@@ -135,21 +137,29 @@ models_str=[
 
 
 '''留一法'''
-for i in range(10):
-    x_train,x_test,y_train,y_test = train_test_split(x, y, test_size = 5, random_state=seed,shuffle=True)
-    for name,m in zip(models_str,models):
-        y_vals,y_val_pres=[],[]
-        model = clone(m)
-        loo = LeaveOneOut()
-        for t, v in loo.split(x_train):
-            model.fit(x_train[t], y_train[t]) # fitting
-            y_val_p = model.predict(x_train[v])
-            y_vals.append(y_train[v])
-            y_val_pres.append(y_val_p)
-            y_test_p = model.predict(x_test)
-        print(name)
-        print("\t验证集MSE：{:.3f} R2：{:.3f}".format(mse(y_vals, y_val_pres), r2_score(y_vals, y_val_pres)))
-        print("\t测试集MSE：{:.3f} R2：{:.3f}".format(mse(y_test, y_test_p), model.score(x_test, y_test)))
+def train(times):
+    for i in range(times):
+        x_train,x_test,y_train,y_test = train_test_split(x, y, test_size = 5, random_state=seed,shuffle=True)
+        for name,m in zip(models_str,models):
+            y_vals,y_val_pres=[],[]
+            model = clone(m)
+            loo = LeaveOneOut()
+            for t, v in loo.split(x_train):
+                model.fit(x_train[t], y_train[t]) # fitting
+                y_val_p = model.predict(x_train[v])
+                y_vals.append(y_train[v])
+                y_val_pres.append(y_val_p)
+                y_test_p = model.predict(x_test)
+            print(name)
+            print("\t验证集MSE：{:.3f} R2：{:.3f}".format(mse(y_vals, y_val_pres), r2_score(y_vals, y_val_pres)))
+            print("\t测试集MSE：{:.3f} R2：{:.3f}".format(mse(y_test, y_test_p), model.score(x_test, y_test)))
+            joblib.dump(model, 'save/%s.model'%(name, datetime.datetime.now('%Y-%m-%d %H:%M:%S')))
+
+
+if __name__ == '__main__':
+    seed = None
+    datafilepath = './data/HRB95.txt'
+    train(1)
 
 '''
 # 十折交叉验证
