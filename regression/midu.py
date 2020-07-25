@@ -51,7 +51,7 @@ np.random.seed(seed)
 # x = data[:,1:data.shape[1]]
 # y = data[:,0]
 label_flag = 'OUT'
-data=pd.read_table('./data/niandu.txt',sep=',' )
+data=pd.read_table('./data/midu.txt',sep=',' )
 x=data.loc[:,data.columns!=label_flag]
 y=data.loc[:,label_flag]
 
@@ -73,43 +73,43 @@ models=[
         KNeighborsRegressor(),
     # GridSearchCV(SVR(), n_jobs=-1,param_grid={"kernel": ("linear", 'rbf'),
     #                                 "C": np.logspace(-3, 3, 7), "gamma": np.logspace(-6, 3, 7)}),
-    #     SVR(degree=10,C=100, gamma=1e-6,kernel ='poly'),
+        SVR(degree=10,C=10, gamma=1e-2),
         Ridge(alpha=100,max_iter=50000, random_state=seed),
-    #     Lasso(alpha=0.1,max_iter=500, random_state=seed),
-        # MLPRegressor(hidden_layer_sizes=(100,200,50,20),max_iter=1000, random_state=seed),
-        # DecisionTreeRegressor(random_state=seed),
-        # ExtraTreeRegressor(random_state=seed),
+        Lasso(alpha=0.1,max_iter=500, random_state=seed),
+        MLPRegressor(hidden_layer_sizes=(100,200,50,20),max_iter=1000, random_state=seed),
+        DecisionTreeRegressor(random_state=seed),
+        ExtraTreeRegressor(random_state=seed),
         XGBRegressor(random_state=seed),
         RandomForestRegressor(random_state=seed),
         AdaBoostRegressor(random_state=seed),
         GradientBoostingRegressor(random_state=seed),
-        # BaggingRegressor(random_state=seed),
-        # VotingRegressor(estimators=[
-        #     ("gbdt",GradientBoostingRegressor(random_state=seed)),
-        #     ("mlp", MLPRegressor(hidden_layer_sizes=(100,200,50,20),max_iter=1000,random_state=seed)),
-        #     ("tree",DecisionTreeRegressor(random_state=seed))]),
-        # StackingRegressor(estimators=[
-        #     ("gbdt",GradientBoostingRegressor(random_state=seed)),
-        #     ("ext",ExtraTreeRegressor(random_state=seed)),
-        #     ("mlp", MLPRegressor(hidden_layer_sizes=(100,200,50,20),max_iter=1000,random_state=seed)),
-        #     ("tree",DecisionTreeRegressor(random_state=seed))],
-        #     final_estimator=None)
+        BaggingRegressor(random_state=seed),
+        VotingRegressor(estimators=[
+            ("gbdt",GradientBoostingRegressor(random_state=seed)),
+            ("mlp", MLPRegressor(hidden_layer_sizes=(100,200,50,20),max_iter=1000,random_state=seed)),
+            ("tree",DecisionTreeRegressor(random_state=seed))]),
+        StackingRegressor(estimators=[
+            ("gbdt",GradientBoostingRegressor(random_state=seed)),
+            ("ext",ExtraTreeRegressor(random_state=seed)),
+            ("mlp", MLPRegressor(hidden_layer_sizes=(100,200,50,20),max_iter=1000,random_state=seed)),
+            ("tree",DecisionTreeRegressor(random_state=seed))],
+            final_estimator=None)
         ]
 models_str=['LinearRegression',
             'KNNRegressor',
-            # 'SVR',
+            'SVR',
             'Ridge',
-            # 'Lasso',
-            # 'MLPRegressor',
-            # 'DecisionTree',
-            # 'ExtraTree',
+            'Lasso',
+            'MLPRegressor',
+            'DecisionTree',
+            'ExtraTree',
             'XGBoost',
             'RandomForest',
             'AdaBoost',
             'GradientBoost',
-            # 'Bagging',
-            # 'VotingRegressor',
-            # 'StackingRegressor'
+            'Bagging',
+            'VotingRegressor',
+            'StackingRegressor'
             ]
 
 

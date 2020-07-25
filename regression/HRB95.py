@@ -10,6 +10,7 @@ from sklearn.metrics import r2_score
 from sklearn.metrics import mean_squared_error as mse
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import RepeatedKFold
 from sklearn.model_selection import cross_val_predict
 from sklearn.model_selection import cross_validate
 from sklearn.preprocessing import StandardScaler
@@ -17,15 +18,17 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn import preprocessing
 
 import warnings
+
 # filter warnings
 warnings.filterwarnings('ignore')
 # 正常显示中文
 from pylab import mpl
+
 mpl.rcParams['font.sans-serif'] = ['SimHei']
 # 正常显示符号
 from matplotlib import rcParams
-rcParams['axes.unicode_minus']=False
 
+rcParams['axes.unicode_minus'] = False
 
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
@@ -45,124 +48,130 @@ from sklearn.ensemble import VotingRegressor
 from sklearn.ensemble import StackingRegressor
 from sklearn.base import clone
 
-seed = None
-random.seed(seed)
-np.random.seed(seed)
+
+def loadXY(datafilepath):
+    label_flag = 'OUT'
+    data = pd.read_table(datafilepath, sep=',')
+    x = data.loc[:, data.columns != label_flag]
+    y = data.loc[:, label_flag]
+
+    mean_cols = x.mean()
+    # x=x.fillna(mean_cols)  #填充缺失值
+    # x=pd.get_dummies(x)    #独热编码
+    # y = np.log(y)  # 平滑处理Y
+    y = np.array(y).reshape(-1, 1)
+    # 归一化
+    mm_x = MinMaxScaler()
+    x = mm_x.fit_transform(x)
+    # 标准化
+    scale_x = StandardScaler()
+    x = scale_x.fit_transform(x)
+    scale_y = StandardScaler()
+    y = scale_y.fit_transform(y)
+
+    y = y.ravel()  # 转一维
+    return x, y
 
 
-# data = np.loadtxt('./data/HRB95.txt', dtype=float, delimiter=',', skiprows=1)
-# x = data[:,1:data.shape[1]]
-# y = data[:,0]
-label_flag = 'OUT'
-datafilepath = './data/HRB95.txt'
-data=pd.read_table(datafilepath,sep=',' )
-x=data.loc[:,data.columns!=label_flag]
-y=data.loc[:,label_flag]
+def train(times, k, seed=1, datafilepath='./data/HRB95.txt'):
+    random.seed(seed)
+    np.random.seed(seed)
+    # data = np.loadtxt('./data/HRB95.txt', dtype=float, delimiter=',', skiprows=1)
+    # x = data[:,1:data.shape[1]]
+    # y = data[:,0]
 
-mean_cols=x.mean()
-# x=x.fillna(mean_cols)  #填充缺失值
-# x=pd.get_dummies(x)    #独热编码
-# y = np.log(y)  # 平滑处理Y
-y = np.array(y).reshape(-1,1)
-#归一化
-mm_x = MinMaxScaler()
-x = mm_x.fit_transform(x)
-# 标准化
-scale_x = StandardScaler()
-x = scale_x.fit_transform(x)
-scale_y = StandardScaler()
-y = scale_y.fit_transform(y)
-
-
-
-y = y.ravel() #转一维
-
-models=[
-        LinearRegression(normalize=True),
-        KNeighborsRegressor(),
-        GridSearchCV(SVR(), param_grid={"C": np.logspace(0, 1, 3), "gamma": np.logspace(-3, 3, 7)}),
-        Ridge(alpha=0.0001,max_iter=5000, random_state=seed),
-        MLPRegressor(hidden_layer_sizes=(100,200,50,20),max_iter=1000, random_state=seed),
+    models = [
+        # LinearRegression(normalize=True),
+        # KNeighborsRegressor(),
+        # GridSearchCV(SVR(), param_grid={"C": np.logspace(0, 2, 4), "gamma": np.logspace(-2, 2, 7)}),
+        # Ridge(alpha=0.0001,max_iter=5000, random_state=seed),
+        # MLPRegressor(hidden_layer_sizes=(100,200,50,20),max_iter=1000, random_state=seed),
         RandomForestRegressor(random_state=seed),
-        GradientBoostingRegressor(random_state=seed),
-        BaggingRegressor(random_state=seed),
-        VotingRegressor(estimators=[
-                ("knn",  KNeighborsRegressor()),
-                ("gbdt",GradientBoostingRegressor(random_state=seed)),
-                ("RandomForest",RandomForestRegressor(random_state=seed)),
-                ("mlp", MLPRegressor(hidden_layer_sizes=(100,200,50,20),max_iter=1000,random_state=seed)),
-                ("ridge", Ridge(random_state=seed)),
-            ],n_jobs=-1),
+        # GradientBoostingRegressor(random_state=seed),
+        # BaggingRegressor(random_state=seed),
+        # VotingRegressor(estimators=[
+        #         ("knn",  KNeighborsRegressor()),
+        #         ("gbdt",GradientBoostingRegressor(random_state=seed)),
+        #         ("RandomForest",RandomForestRegressor(random_state=seed)),
+        #         ("mlp", MLPRegressor(hidden_layer_sizes=(100,200,50,20),max_iter=1000,random_state=seed)),
+        #         ("ridge", Ridge(random_state=seed)),
+        #     ],n_jobs=-1),
+        # StackingRegressor(estimators=[
+        #         ("knn",  KNeighborsRegressor()),
+        #         ("gbdt",GradientBoostingRegressor(random_state=seed)),
+        #         ("RandomForest",RandomForestRegressor(random_state=seed)),
+        #         ("mlp", MLPRegressor(hidden_layer_sizes=(100,200,50,20),max_iter=1000,random_state=seed)),
+        #         ("ridge", Ridge(alpha=0.01,max_iter=5000, random_state=seed)),
+        #     ],  final_estimator=None, cv=2, n_jobs=-1),
         StackingRegressor(estimators=[
                 ("knn",  KNeighborsRegressor()),
                 ("gbdt",GradientBoostingRegressor(random_state=seed)),
                 ("RandomForest",RandomForestRegressor(random_state=seed)),
                 ("mlp", MLPRegressor(hidden_layer_sizes=(100,200,50,20),max_iter=1000,random_state=seed)),
                 ("ridge", Ridge(alpha=0.01,max_iter=5000, random_state=seed)),
-            ],  final_estimator=None, n_jobs=-1),
-        StackingRegressor(estimators=[
-                ("knn",  KNeighborsRegressor()),
-                ("gbdt",GradientBoostingRegressor(random_state=seed)),
-                ("RandomForest",RandomForestRegressor(random_state=seed)),
-                ("mlp", MLPRegressor(hidden_layer_sizes=(100,200,50,20),max_iter=1000,random_state=seed)),
-                ("ridge", Ridge(alpha=0.01,max_iter=5000, random_state=seed)),
-            ],  final_estimator=LinearRegression(), n_jobs=-1),
-]
-models_str=[
-            'LinearRegression'
-            'KNNRegressor',
-            'SVR',
-            'Ridge',
-            'MLPRegressor',
-            'RandomForest',
-            'GradientBoost',
-            'Bagging',
-            'VotingRegressor',
-            'StackingRegressor',
-            'StackingRegressorXGB'
-            ]
+            ],  final_estimator=None, n_jobs=-1, cv=LeaveOneOut()),
+    ]
+    models_str = [
+        # 'LinearRegression'
+        # 'KNNRegressor',
+        # 'SVR',
+        # 'Ridge',
+        # 'MLPRegressor',
+        'RandomForest',
+        # 'GradientBoost',
+        # 'Bagging',
+        # 'VotingRegressor',
+        # 'StackingRegressor10',
+        'StackingRegressor5'
+    ]
 
-x_train,x_test,y_train,y_test = train_test_split(x, y, test_size = 5, random_state=seed,shuffle=True)
-
-'''留一法'''
-def train(times):
-    for name,m in zip(models_str,models):
-        y_vals,y_val_pres=[],[]
-        model = clone(m)
-        loo = LeaveOneOut()
-        for t, v in loo.split(x_train):
-            model.fit(x_train[t], y_train[t]) # fitting
-            y_val_p = model.predict(x_train[v])
-            y_vals.append(y_train[v])
-            y_val_pres.append(y_val_p)
+    for time in range(times):
+        x, y = loadXY(datafilepath)
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=5, random_state=seed, shuffle=True)
+        for name, m in zip(models_str, models):
+            y_vals, y_val_p_s = [], []
+            model = clone(m)
+            # 交叉验证
+            if k > 1:
+                kf = RepeatedKFold(n_splits=k, n_repeats=20, random_state=seed)
+            else:
+                kf = LeaveOneOut()
+            for t, v in kf.split(x_train):
+                model.fit(x_train[t], y_train[t])  # fitting
+                y_val_p = model.predict(x_train[v])
+                y_vals = np.append(y_vals, y_train[v])
+                y_val_p_s = np.append(y_val_p_s, y_val_p)
             y_test_p = model.predict(x_test)
-        print(name)
-        print("\t验证集MSE：{:.3f} R2：{:.3f}".format(mse(y_vals, y_val_pres), r2_score(y_vals, y_val_pres)))
-        print("\t测试集MSE：{:.3f} R2：{:.3f}".format(mse(y_test, y_test_p), model.score(x_test, y_test)))
-        joblib.dump(model, 'save/%s.model'%name)
+            print(name)
+            print("\t验证集MSE：{:.3f} R2：{:.3f}".format(mse(y_vals, y_val_p_s), r2_score(y_vals, y_val_p_s)))
+            print("\t测试集MSE：{:.3f} R2：{:.3f}".format(mse(y_test, y_test_p), model.score(x_test, y_test)))
+            joblib.dump(model, 'save/%s.model' % name)
 
-def search_best_params(gridcv=None):
-    gridcv = GridSearchCV(SVR(),cv=10,n_jobs=-1,
-                        param_grid={"kernel": ("linear", 'rbf'),"C": np.logspace(0, 4, 10),
-                                    "gamma": np.logspace(-3, 3, 10)})
+
+def search_best_params(gridcv=None, datafilepath='./data/HRB95.txt'):
+    x, y = loadXY(datafilepath)
+    # gridcv = GridSearchCV(SVR(),cv=10,n_jobs=-1,
+    #                     param_grid={"kernel": ("linear", 'rbf'),"C": np.logspace(0, 4, 10),
+    #                                 "gamma": np.logspace(-3, 3, 10)})
+    gridcv = GridSearchCV(KNeighborsRegressor(), cv=10, n_jobs=-1,
+                          param_grid={"n_neighbors": [nb for nb in range(1, 20)], "p": [p for p in range(1, 10)],
+                                      "weights": ['uniform', 'distance'], "leaf_size": [s for s in range(3, 30)]
+                                      })
     gridcv.fit(x, y)
     print(gridcv.best_params_, '\n', gridcv.best_score_)
 
+
 if __name__ == '__main__':
-    seed = None
-    datafilepath = './data/HRB95.txt'
-    train(1)
+    time = 1 #不是训练次数，而是重新划分数据集重新训练测试次数
+    train(times=1, k=1, seed=1, datafilepath='./data/HRB95.txt')
+    train(times=1, k=5, seed=1, datafilepath='./data/HRB95.txt')
+    train(times=1, k=10,seed=1, datafilepath='./data/HRB95.txt')
+    train(times=1, k=1, seed=2, datafilepath='./data/HRB95.txt')
+    train(times=1, k=5, seed=2, datafilepath='./data/HRB95.txt')
+    train(times=1, k=1, seed=3, datafilepath='./data/HRB95.txt')
+    train(times=1, k=5, seed=3, datafilepath='./data/HRB95.txt')
     # search_best_params()
 
-'''
-# 十折交叉验证
-for name,m in zip(models_str,models):
-    model = clone(m)
-    cross_val_score
-    # y_pred = cross_val_predict(model, x, y, cv=10)
-    scores = cross_validate(model, x, y, scoring=['neg_mean_squared_error','r2'], cv = 10, return_train_score = False)
-    print(name,scores)
-'''
 '''
 scores=[]
 plt.cla()
