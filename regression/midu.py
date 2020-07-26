@@ -5,6 +5,7 @@ import datetime
 import matplotlib.pyplot as plt
 import os
 import joblib
+from tool import println
 from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import r2_score
 from sklearn.metrics import mean_squared_error as mse
@@ -76,68 +77,45 @@ def loadXY(datafilepath):
     return x, y
 
 
-def train(times, k, seed=1, datafilepath='./data/HRB95.txt'):
+def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt'):
+    seed = None
     random.seed(seed)
     np.random.seed(seed)
     # data = np.loadtxt('./data/HRB95.txt', dtype=float, delimiter=',', skiprows=1)
     # x = data[:,1:data.shape[1]]
     # y = data[:,0]
-
+    cv = k
+    if cv==1:
+        cv = LeaveOneOut()
     models = [
-        # LinearRegression(normalize=True),
-        KNeighborsRegressor(),
-        GridSearchCV(SVR(), param_grid={"C": np.logspace(0, 2, 4), "gamma": np.logspace(-2, 2, 7)}),
+        GridSearchCV(SVR(), param_grid={"C": np.logspace(0, 2, 4), "gamma": np.logspace(-2, 2, 7)},n_jobs=-1),
         RidgeCV(alphas=(0.1, 1.0, 10.0,100.0)),
-        # LassoCV(alphas=(0.1, 1.0, 10.0,100.0)),
-        MLPRegressor(hidden_layer_sizes=(50,100,50),max_iter=500, random_state=seed),
+        MLPRegressor(hidden_layer_sizes=(50,100,50),max_iter=700, random_state=seed),
         RandomForestRegressor(random_state=seed),
         GradientBoostingRegressor(random_state=seed),
-        # BaggingRegressor(random_state=seed),
-        # VotingRegressor(estimators=[
-        #     ("knn", KNeighborsRegressor()),
-        #     ("gbdt", GradientBoostingRegressor(random_state=seed)),
-        #     ("RandomForest", RandomForestRegressor(random_state=seed)),
-        #     ("mlp", MLPRegressor(hidden_layer_sizes=(50, 100, 50), max_iter=700, random_state=seed)),
-        #     ("svr", GridSearchCV(SVR(), param_grid={"C": np.logspace(0, 2, 4), "gamma": np.logspace(-2, 2, 7)})),
-        #     ],n_jobs=-1),
 
         StackingRegressor(estimators=[
                 ("ridge", RidgeCV(alphas=(0.1, 1.0, 10.0, 100.0))),
-                ("knn",  KNeighborsRegressor()),
                 ("gbdt",GradientBoostingRegressor(random_state=seed)),
                 ("RandomForest",RandomForestRegressor(random_state=seed)),
                 ("mlp", MLPRegressor(hidden_layer_sizes=(50,100,50),max_iter=700,random_state=seed)),
-                ("svr", GridSearchCV(SVR(), param_grid={"C": np.logspace(0, 2, 4), "gamma": np.logspace(-2, 2, 7)})),
-        ],  final_estimator=None, n_jobs=-1),
-
-        StackingRegressor(estimators=[
-                ("ridge",RidgeCV(alphas=(0.1, 1.0, 10.0, 100.0))),
-                ("knn",  KNeighborsRegressor()),
-                ("gbdt",GradientBoostingRegressor(random_state=seed)),
-                ("RandomForest",RandomForestRegressor(random_state=seed)),
-                ("mlp", MLPRegressor(hidden_layer_sizes=(50,100,50),max_iter=700,random_state=seed)),
-                ("svr", GridSearchCV(SVR(), param_grid={"C": np.logspace(0, 2, 4), "gamma": np.logspace(-2, 2, 7)})),
-        ],  final_estimator=LassoCV(alphas=(0.1, 1.0, 10.0, 100.0)), n_jobs=-1),
+                ("svr", GridSearchCV(SVR(), n_jobs=-1, param_grid={"C": np.logspace(0, 2, 4), "gamma": np.logspace(-2, 2, 7)})),
+        ],  final_estimator=None, n_jobs=-1,cv=cv),
+       
 
     ]
     models_str = [
-        # 'LinearRegression',
-        'KNNRegressor',
         'SVR',
         'RidgeCV',
-        # 'LassoCV',
         'MLPRegressor',
         'RandomForest',
         'GradientBoost',
-        # 'Bagging',
-        # 'VotingRegressor',
-        'Stackingridge',
-        'Stackinglass',
+        'Stacking',
     ]
     #times次平均得分，
     MAE,MSE,R2={},{},{}
-    for time in range(times):
-        print("-----第%s次-----"%time)
+    for time,seed in enumerate(seeds):
+        print("-----第%d次(seed=%s)-----"%(time+1,seed))
         print("{:20s}{:10s}{:10s}{:10s}".format("方法","MAE","MSE","R2"))
         x, y = loadXY(datafilepath)
         x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=5, random_state=seed, shuffle=True)
@@ -156,10 +134,13 @@ def train(times, k, seed=1, datafilepath='./data/HRB95.txt'):
                 model.fit(x_train,y_train)
                 train_pred = model.predict(x_train)
                 test_pred = model.predict(x_test)
-                print("{:20s}{:6.4f}{:10.4f}{:10.3f}{}".
-                      format("train", mae(train_pred,y_train), mse(train_pred,y_train),model.score(x_train,y_train)))
-                print("{:20s}{:6.4f}{:10.4f}{:10.3f}{}".
-                      format("test", mae(test_pred, y_test), mse(test_pred, y_test), model.score(x_test, y_test)))
+                MAE[name] = np.append(MAE[name], mae(test_pred, y_test))
+                MSE[name] = np.append(MSE[name], mse(test_pred, y_test))
+                R2[name] = np.append(R2[name], model.score(x_test, y_test))
+                print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format("train", mae(train_pred,y_train), mse(train_pred,y_train), model.score(x_train,y_train)))
+                print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format("test", MAE[name][-1], MSE[name][-1], R2[name][-1]))
+                # if(R2[name][-1]>0.2): #去除异常样本分配
+                #     print(seed,end=",")
                 continue;
             # 交叉验证
             if k > 1:
@@ -181,16 +162,15 @@ def train(times, k, seed=1, datafilepath='./data/HRB95.txt'):
             print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format("val", matrix['val']['mae'], matrix['val']['mse'], matrix['val']['r2'],))
             print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format("test", matrix['test']['mae'],matrix['test']['mse'],matrix['test']['r2']))
             joblib.dump(model, 'save/%s%d.model' % (name,time))
-        print(end='\n') #所有模型交叉训练结束（一次） 每一次样本集不一样
+            MAE[name] = np.append(MAE[name], matrix['test']['mae'])
+            MSE[name] = np.append(MSE[name], matrix['test']['mse'])
+            R2[name]  = np.append(R2[name],  matrix['test']['r2'])
+        print() #所有模型交叉训练结束（一次） 每一次样本集不一样
     #
-        MAE[name] = np.append(MAE[name], matrix['test']['mae'])
-        MSE[name] = np.append(MSE[name], matrix['test']['mse'])
-        R2[name]  = np.append(R2[name],  matrix['test']['r2'])
-
-    print("---------%d次训练测试平均得分----------")
+    print("---------%d次训练测试平均得分----------"%len(seeds))
     print("{:20s}{:10s}{:10s}{:10s}".format("方法","MAE","MSE","R2"))
     for name in MAE.keys():
-        print("{:>20s}{:6.4f}{:10.4f}{:10.3f}".format(name,np.mean(MAE[name]), np.mean(MSE[name]),np.mean(R2[name])))
+        print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format(name,np.mean(MAE[name]), np.mean(MSE[name]),np.mean(R2[name])))
 
 
 def search_best_params(gridcv=None, datafilepath='./data/HRB95.txt'):
@@ -198,20 +178,30 @@ def search_best_params(gridcv=None, datafilepath='./data/HRB95.txt'):
     # gridcv = GridSearchCV(SVR(),cv=10,n_jobs=-1,
     #                     param_grid={"kernel": ("linear", 'rbf'),"C": np.logspace(0, 4, 10),
     #                                 "gamma": np.logspace(-3, 3, 10)})
-    # gridcv = GridSearchCV(KNeighborsRegressor(), cv=10, n_jobs=-1,
-    #                       param_grid={"n_neighbors": [nb for nb in range(1, 20)], "p": [p for p in range(1, 10)],
-    #                                   "weights": ['uniform', 'distance'], "leaf_size": [s for s in range(3, 30)]
-    #                                   })
-    gridcv = GridSearchCV(Ridge(), cv=10, n_jobs=-1,
-                          param_grid={"alpha": [500, 100,10,1,0.1]
+    gridcv = GridSearchCV(KNeighborsRegressor(), cv=10, n_jobs=-1,
+                          param_grid={"n_neighbors": [nb for nb in range(1, 20)], "p": [p for p in range(1, 10)],
+                                      "weights": ['uniform', 'distance'], "leaf_size": [s for s in range(3, 30)]
                                       })
+    # gridcv = GridSearchCV(Ridge(), cv=10, n_jobs=-1,
+    #                       param_grid={"alpha": [500, 100,10,1,0.1]
+    #                                   })
     gridcv.fit(x, y)
     print(gridcv.best_params_, '\n', gridcv.best_score_)
 
+seeds = [0,1,2,3,4,5,6,7,9,10,11,12,14,15,16,17,18,19,20,22,24,25,26,28,29,30,31,32,33,34,35,36,37,38,39,40,41,43,44,45,46,48,49,50,51,52
+,53,55,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,73,74,75,76,77,78,79,80,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,101,103,
+107,108,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,137,139,140,141,142,143,144,
+146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,166,167,168,169,170,171,172,173,174,176,178,179,180,181,182,183,184,
+185,186,188,189,190,191,195,196,197,198,199,200,201,202,203,204,205,207,208,209,210,211,213,214,215,216,217,218,220,221,222,223,224,225,226,
+227,228,229,230,232,233,234,235,236,237,238,239,240,242,243,244,245,246,247,248,249,250,251,252,254,255,256,258,259,260,261,262,263,264,265,
+266,267,268,270,271,272,273,275,276,277,278,279,280,281,282,283,284,286,287,288,289,290,291,292,293,294,295,296,297,299,]
+seeds=[234,235,236,237,238,239,240,242,243,244,245,246,247,248,249,250,251,252,254,255,256,258,259,260,261,262,263,264,265,
+266,267,268,270,271,272,273,275,276,277,278,279,280,281,282,283,284,286,287,288,289,290,291,292,293,294,295,296,297,299]
+seeds=[i for i in range(0,50)]
+seeds=[None]
 
 if __name__ == '__main__':
-    time = 5 #不是训练次数，而是重新划分数据集重新训练测试次数
-    train(times=1, k=1, seed=None, datafilepath='./data/midu.txt')
+    train(seeds, k=1,datafilepath='./data/midu.txt')
     # search_best_params()
 
 '''
@@ -244,4 +234,14 @@ for name,model in zip(models_str,models):
           format(name, str(score)[:5], str(r2_score(y_pred,y_test))[:5]))
 
 # print(scores)
+'''
+'''
+---------100次训练测试平均得分----------
+方法                  MAE       MSE       R2
+SVR                 0.2183    0.1126     0.818
+RidgeCV             0.1787    0.0824     0.825
+MLPRegressor        0.2146    0.1346     0.741
+RandomForest        0.2904    0.2176     0.736
+GradientBoost       0.2758    0.1776     0.725
+Stacking            0.1835    0.0816     0.852
 '''
