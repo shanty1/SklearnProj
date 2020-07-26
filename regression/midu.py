@@ -78,7 +78,7 @@ def loadXY(datafilepath):
 
 
 def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt',test_size=5):
-    seed = 7
+    seed = 2
     random.seed(seed)
     np.random.seed(seed)
     # data = np.loadtxt('./data/HRB95.txt', dtype=float, delimiter=',', skiprows=1)
