@@ -5,7 +5,6 @@ import datetime
 import matplotlib.pyplot as plt
 import os
 import joblib
-from tool import println
 from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import r2_score
 from sklearn.metrics import mean_squared_error as mse
@@ -197,8 +196,8 @@ seeds = [0,1,2,3,4,5,6,7,9,10,11,12,14,15,16,17,18,19,20,22,24,25,26,28,29,30,31
 266,267,268,270,271,272,273,275,276,277,278,279,280,281,282,283,284,286,287,288,289,290,291,292,293,294,295,296,297,299,]
 seeds=[234,235,236,237,238,239,240,242,243,244,245,246,247,248,249,250,251,252,254,255,256,258,259,260,261,262,263,264,265,
 266,267,268,270,271,272,273,275,276,277,278,279,280,281,282,283,284,286,287,288,289,290,291,292,293,294,295,296,297,299]
-seeds=[i for i in range(0,50)]
-seeds=[None]
+seeds=[i for i in range(10)]
+# seeds=[None]
 
 if __name__ == '__main__':
     train(seeds, k=1,datafilepath='./data/midu.txt')
@@ -244,4 +243,25 @@ MLPRegressor        0.2146    0.1346     0.741
 RandomForest        0.2904    0.2176     0.736
 GradientBoost       0.2758    0.1776     0.725
 Stacking            0.1835    0.0816     0.852
+
+-----第2次(seed=1)-----
+方法                  MAE       MSE       R2        
+               SVR
+val                 0.2398    0.1213     0.883
+test                0.1707    0.0477     0.877
+           RidgeCV
+val                 0.1794    0.0861     0.917
+test                0.1666    0.0467     0.879
+      MLPRegressor
+val                 0.2400    0.1459     0.860
+test                0.1466    0.0422     0.891
+      RandomForest
+val                 0.3040    0.2206     0.788
+test                0.1584    0.0629     0.837
+     GradientBoost
+val                 0.2761    0.1899     0.817
+test                0.2331    0.1180     0.694
+          Stacking
+train               0.0620    0.0069     0.993
+test                0.1204    0.0331     0.914
 '''
