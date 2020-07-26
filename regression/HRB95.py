@@ -76,18 +76,21 @@ def loadXY(datafilepath):
     return x, y
 
 
-def train(times, k, seed=1, datafilepath='./data/HRB95.txt'):
+def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt'):
+    seed = None
     random.seed(seed)
     np.random.seed(seed)
     # data = np.loadtxt('./data/HRB95.txt', dtype=float, delimiter=',', skiprows=1)
     # x = data[:,1:data.shape[1]]
     # y = data[:,0]
-
+    cv = k
+    if cv==1:
+        cv = LeaveOneOut()
     models = [
-        GridSearchCV(KNeighborsRegressor(), cv=10, n_jobs=-1,
-                     param_grid={"n_neighbors": [nb for nb in range(3, 20)], "p": [2,4,6,8,10],
-                                 "weights": ['uniform', 'distance'], "leaf_size": [5,10,20,30,35,40]
-                                 }),
+        # GridSearchCV(KNeighborsRegressor(), n_jobs=-1,
+        #                     param_grid={"n_neighbors": [3,5,10,13,17,25], "p": [2,4,6,8,10],
+        #                                 "weights": ['uniform', 'distance'], "leaf_size": [3,6,11,16,20,25]
+        #                          }),
         GridSearchCV(SVR(), param_grid={"C": np.logspace(0, 2, 4), "gamma": np.logspace(-2, 2, 7)},n_jobs=-1),
         RidgeCV(alphas=(0.1, 1.0, 10.0,100.0)),
         MLPRegressor(hidden_layer_sizes=(50,100,50),max_iter=500, random_state=seed),
@@ -96,31 +99,31 @@ def train(times, k, seed=1, datafilepath='./data/HRB95.txt'):
 
         StackingRegressor(estimators=[
                 ("ridge", RidgeCV(alphas=(0.1, 1.0, 10.0, 100.0))),
-                ("knn",  GridSearchCV(KNeighborsRegressor(), cv=10, n_jobs=-1,
-                            param_grid={"n_neighbors": [nb for nb in range(3, 20)], "p": [2,4,6,8,10],
-                                        "weights": ['uniform', 'distance'], "leaf_size": [5,10,20,30,35,40]
-                                 })),
+                # ("knn",  GridSearchCV(KNeighborsRegressor(), n_jobs=-1,
+                #             param_grid={"n_neighbors": [3,5,10,13,17,25], "p": [2,4,6,8,10],
+                #                         "weights": ['uniform', 'distance'], "leaf_size": [3,6,11,16,20,25]
+                #                  })),
                 ("gbdt",GradientBoostingRegressor(random_state=seed)),
                 ("RandomForest",RandomForestRegressor(random_state=seed)),
                 ("mlp", MLPRegressor(hidden_layer_sizes=(50,100,50),max_iter=700,random_state=seed)),
                 ("svr", GridSearchCV(SVR(), param_grid={"C": np.logspace(0, 2, 4), "gamma": np.logspace(-2, 2, 7)})),
-        ],  final_estimator=None, n_jobs=-1),
+        ],  final_estimator=None, n_jobs=-1,cv=cv),
 
         StackingRegressor(estimators=[
                 ("ridge",RidgeCV(alphas=(0.1, 1.0, 10.0, 100.0))),
-                ("knn",  GridSearchCV(KNeighborsRegressor(), cv=10, n_jobs=-1,
-                            param_grid={"n_neighbors": [nb for nb in range(3, 20)], "p": [2,4,6,8,10],
-                                        "weights": ['uniform', 'distance'], "leaf_size": [5,10,20,30,35,40]
-                                 })),
+                # ("knn",  GridSearchCV(KNeighborsRegressor(), cv=10, n_jobs=-1,
+                #             param_grid={"n_neighbors": [3,5,10,13,17,25], "p": [2,4,6,8,10],
+                #                         "weights": ['uniform', 'distance'], "leaf_size": [3,6,11,16,20,25]
+                #                  })),
                 ("gbdt",GradientBoostingRegressor(random_state=seed)),
                 ("RandomForest",RandomForestRegressor(random_state=seed)),
                 ("mlp", MLPRegressor(hidden_layer_sizes=(50,100,50),max_iter=700,random_state=seed)),
                 ("svr", GridSearchCV(SVR(), param_grid={"C": np.logspace(0, 2, 4), "gamma": np.logspace(-2, 2, 7)})),
-        ],  final_estimator=LassoCV(alphas=(0.1, 1.0, 10.0, 100.0)), n_jobs=-1),
+        ], cv=cv, final_estimator=LassoCV(alphas=(0.1, 1.0, 10.0, 100.0)), n_jobs=-1),
 
     ]
     models_str = [
-        'KNNRegressor',
+        # 'KNNRegressor',
         'SVR',
         'RidgeCV',
         'MLPRegressor',
@@ -131,8 +134,8 @@ def train(times, k, seed=1, datafilepath='./data/HRB95.txt'):
     ]
     #times次平均得分，
     MAE,MSE,R2={},{},{}
-    for time in range(times):
-        print("-----第%s次-----"%time)
+    for time,seed in enumerate(seeds):
+        print("-----第%d次(seed=%d)-----"%(time+1,seed))
         print("{:20s}{:10s}{:10s}{:10s}".format("方法","MAE","MSE","R2"))
         x, y = loadXY(datafilepath)
         x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=5, random_state=seed, shuffle=True)
@@ -193,20 +196,20 @@ def search_best_params(gridcv=None, datafilepath='./data/HRB95.txt'):
     # gridcv = GridSearchCV(SVR(),cv=10,n_jobs=-1,
     #                     param_grid={"kernel": ("linear", 'rbf'),"C": np.logspace(0, 4, 10),
     #                                 "gamma": np.logspace(-3, 3, 10)})
-    # gridcv = GridSearchCV(KNeighborsRegressor(), cv=10, n_jobs=-1,
-    #                       param_grid={"n_neighbors": [nb for nb in range(1, 20)], "p": [p for p in range(1, 10)],
-    #                                   "weights": ['uniform', 'distance'], "leaf_size": [s for s in range(3, 30)]
-    #                                   })
-    gridcv = GridSearchCV(Ridge(), cv=10, n_jobs=-1,
-                          param_grid={"alpha": [500, 100,10,1,0.1]
+    gridcv = GridSearchCV(KNeighborsRegressor(), cv=10, n_jobs=-1,
+                          param_grid={"n_neighbors": [nb for nb in range(1, 20)], "p": [p for p in range(1, 10)],
+                                      "weights": ['uniform', 'distance'], "leaf_size": [s for s in range(3, 30)]
                                       })
+    # gridcv = GridSearchCV(Ridge(), cv=10, n_jobs=-1,
+    #                       param_grid={"alpha": [500, 100,10,1,0.1]
+    #                                   })
     gridcv.fit(x, y)
     print(gridcv.best_params_, '\n', gridcv.best_score_)
 
 
 if __name__ == '__main__':
     time = 5 #不是训练次数，而是重新划分数据集重新训练测试次数
-    train(times=1, k=1, seed=2, datafilepath='./data/midu.txt')
+    train(seeds=[1,2,3,4,5,6,7,8,9,10], k=5,datafilepath='./data/midu.txt')
     # search_best_params()
 
 '''
