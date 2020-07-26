@@ -51,6 +51,9 @@ from sklearn.ensemble import VotingRegressor
 from sklearn.ensemble import StackingRegressor
 from sklearn.base import clone
 
+markers = ['h','s','<','>','1','2','3','4','8','p','d','^','*','+','x','^','o']
+scale_x = StandardScaler()
+scale_y = StandardScaler()
 
 def loadXY(datafilepath):
     label_flag = 'OUT'
@@ -67,17 +70,15 @@ def loadXY(datafilepath):
     mm_x = MinMaxScaler()
     x = mm_x.fit_transform(x)
     # 标准化
-    scale_x = StandardScaler()
     x = scale_x.fit_transform(x)
-    scale_y = StandardScaler()
     y = scale_y.fit_transform(y)
 
     y = y.ravel()  # 转一维
     return x, y
 
 
-def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt'):
-    seed = None
+def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt',test_size=5):
+    seed = 7
     random.seed(seed)
     np.random.seed(seed)
     # data = np.loadtxt('./data/HRB95.txt', dtype=float, delimiter=',', skiprows=1)
@@ -106,18 +107,21 @@ def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt'):
     models_str = [
         'SVR',
         'RidgeCV',
-        'MLPRegressor',
-        'RandomForest',
-        'GradientBoost',
+        'MLP',
+        'RF',
+        'GBDT',
         'Stacking',
     ]
+    plt.figure(figsize=(30, 30))
+    plt.xlim(0, 6)
+    # plt.ylim(3, 7, 0.3)
     #times次平均得分，
     MAE,MSE,R2={},{},{}
     for time,seed in enumerate(seeds):
         print("-----第%d次(seed=%s)-----"%(time+1,seed))
         print("{:20s}{:10s}{:10s}{:10s}".format("方法","MAE","MSE","R2"))
         x, y = loadXY(datafilepath)
-        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=5, random_state=seed, shuffle=True)
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_size, random_state=seed, shuffle=True)
         for name, m in zip(models_str, models):
             if not name in MAE.keys() :
                 MAE[name] = []
@@ -138,39 +142,44 @@ def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt'):
                 R2[name] = np.append(R2[name], model.score(x_test, y_test))
                 print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format("train", mae(train_pred,y_train), mse(train_pred,y_train), model.score(x_train,y_train)))
                 print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format("test", MAE[name][-1], MSE[name][-1], R2[name][-1]))
-                # if(R2[name][-1]>0.2): #去除异常样本分配
-                #     print(seed,end=",")
-                continue;
-            # 交叉验证
-            if k > 1:
-                kf = RepeatedKFold(n_splits=k, n_repeats=10, random_state=seed)
             else:
-                kf = LeaveOneOut()
-            for t, v in kf.split(x_train):
-                model.fit(x_train[t], y_train[t])  # fitting
-                y_val_p = model.predict(x_train[v])
-                y_vals = np.append(y_vals, y_train[v])
-                y_val_p_s = np.append(y_val_p_s, y_val_p)
-                mse_test = np.append(mse_test,mse(y_test, model.predict(x_test)))
-                mae_test = np.append(mae_test,mae(y_test, model.predict(x_test)))
-                r2_test = np.append(r2_test,model.score(x_test, y_test))
-            matrix={
-                'val':{'mae':mae(y_vals, y_val_p_s), 'mse': mse(y_vals, y_val_p_s), 'r2':r2_score(y_vals, y_val_p_s)},
-                'test':{'mae':mae_test.mean(),'mse':mse_test.mean(), 'r2':r2_test.mean()},
-            }
-            print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format("val", matrix['val']['mae'], matrix['val']['mse'], matrix['val']['r2'],))
-            print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format("test", matrix['test']['mae'],matrix['test']['mse'],matrix['test']['r2']))
-            joblib.dump(model, 'save/%s%d.model' % (name,time))
-            MAE[name] = np.append(MAE[name], matrix['test']['mae'])
-            MSE[name] = np.append(MSE[name], matrix['test']['mse'])
-            R2[name]  = np.append(R2[name],  matrix['test']['r2'])
+                # 交叉验证
+                if k > 1:
+                    kf = RepeatedKFold(n_splits=k, n_repeats=10, random_state=seed)
+                else:
+                    kf = LeaveOneOut()
+                for t, v in kf.split(x_train):
+                    model.fit(x_train[t], y_train[t])  # fitting
+                    y_val_p = model.predict(x_train[v])
+                    y_vals = np.append(y_vals, y_train[v])
+                    y_val_p_s = np.append(y_val_p_s, y_val_p)
+                    mse_test = np.append(mse_test,mse(y_test, model.predict(x_test)))
+                    mae_test = np.append(mae_test,mae(y_test, model.predict(x_test)))
+                    r2_test = np.append(r2_test,model.score(x_test, y_test))
+                matrix={
+                    'val':{'mae':mae(y_vals, y_val_p_s), 'mse': mse(y_vals, y_val_p_s), 'r2':r2_score(y_vals, y_val_p_s)},
+                    'test':{'mae':mae_test.mean(),'mse':mse_test.mean(), 'r2':r2_test.mean()},
+                }
+                print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format("val", matrix['val']['mae'], matrix['val']['mse'], matrix['val']['r2'],))
+                print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format("test", matrix['test']['mae'],matrix['test']['mse'],matrix['test']['r2']))
+                joblib.dump(model, 'save/%s%d.model' % (name,time))
+                MAE[name] = np.append(MAE[name], matrix['test']['mae'])
+                MSE[name] = np.append(MSE[name], matrix['test']['mse'])
+                R2[name]  = np.append(R2[name],  matrix['test']['r2'])
+            plt.plot([x for x in range(1, 6)],
+                     scale_y.inverse_transform(model.predict(x_test)), marker=markers.pop(), label=name)
         print() #所有模型交叉训练结束（一次） 每一次样本集不一样
     #
     print("---------%d次训练测试平均得分----------"%len(seeds))
     print("{:20s}{:10s}{:10s}{:10s}".format("方法","MAE","MSE","R2"))
     for name in MAE.keys():
         print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format(name,np.mean(MAE[name]), np.mean(MSE[name]),np.mean(R2[name])))
-
+    plt.plot([x for x in range(1, 6)], scale_y.inverse_transform(y_test), marker=markers.pop(), label='True Label')
+    plt.legend(edgecolor='black', loc=4)  # 让图例标签展示
+    plt.xlabel(u"sample-k")  # X轴标签
+    plt.ylabel('dense')  # Y轴标签
+    plt.title('prediction on GI20')  # 标题
+    plt.show()
 
 def search_best_params(gridcv=None, datafilepath='./data/HRB95.txt'):
     x, y = loadXY(datafilepath)
@@ -198,10 +207,13 @@ seeds=[234,235,236,237,238,239,240,242,243,244,245,246,247,248,249,250,251,252,2
 266,267,268,270,271,272,273,275,276,277,278,279,280,281,282,283,284,286,287,288,289,290,291,292,293,294,295,296,297,299]
 seeds=[i for i in range(10)]
 # seeds=[None]
-
+seeds = [1]
 if __name__ == '__main__':
     train(seeds, k=1,datafilepath='./data/midu.txt')
     # search_best_params()
+
+
+
 
 '''
 scores=[]
