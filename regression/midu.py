@@ -51,7 +51,17 @@ from sklearn.ensemble import VotingRegressor
 from sklearn.ensemble import StackingRegressor
 from sklearn.base import clone
 
-markers = ['h','s','<','>','1','2','3','4','8','p','d','^','*','+','x','^','o']
+#设置图例并且设置图例的字体及大小
+font2 = {
+'family' : 'Times New Roman',
+'weight' : 'normal',
+'size' : 15,
+}
+font1 = {'family' : 'Times New Roman',
+'weight' : 'normal',
+'size' : 18,
+}
+markers = ['h','s','<','>','1','2','3','4','8','p','d','^','+','x','^','o']*100
 scale_x = StandardScaler()
 scale_y = StandardScaler()
 
@@ -112,9 +122,7 @@ def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt',test_size=5):
         'GBDT',
         'Stacking',
     ]
-    plt.figure(figsize=(30, 30))
-    plt.xlim(0, 6)
-    # plt.ylim(3, 7, 0.3)
+
     #times次平均得分，
     MAE,MSE,R2={},{},{}
     for time,seed in enumerate(seeds):
@@ -122,6 +130,11 @@ def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt',test_size=5):
         print("{:20s}{:10s}{:10s}{:10s}".format("方法","MAE","MSE","R2"))
         x, y = loadXY(datafilepath)
         x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_size, random_state=seed, shuffle=True)
+        plt.figure(time)
+        # plt.xlim(0, 6)
+        # plt.ylim(3, 7, 0.3)
+        plt.scatter([x for x in range(1, test_size + 1)], scale_y.inverse_transform(y_test),
+                    marker='*',label='True Label', s=300)
         for name, m in zip(models_str, models):
             if not name in MAE.keys() :
                 MAE[name] = []
@@ -166,20 +179,21 @@ def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt',test_size=5):
                 MAE[name] = np.append(MAE[name], matrix['test']['mae'])
                 MSE[name] = np.append(MSE[name], matrix['test']['mse'])
                 R2[name]  = np.append(R2[name],  matrix['test']['r2'])
-            plt.plot([x for x in range(1, 6)],
-                     scale_y.inverse_transform(model.predict(x_test)), marker=markers.pop(), label=name)
+
+            plt.plot([x for x in range(1, test_size + 1)], scale_y.inverse_transform(model.predict(x_test)),
+                     marker=markers.pop(), label=name)
+            plt.legend(edgecolor='black', loc=4, prop=font2)  # 让图例标签展示
+            plt.xlabel(u"Test Data",fontdict=font1)  # X轴标签
+            plt.ylabel('Density',fontdict=font1)  # Y轴标签
+            plt.title('Prediction on GI20',fontdict=font1)  # 标题
+        plt.ioff()
         print() #所有模型交叉训练结束（一次） 每一次样本集不一样
-    #
+    plt.show()
     print("---------%d次训练测试平均得分----------"%len(seeds))
     print("{:20s}{:10s}{:10s}{:10s}".format("方法","MAE","MSE","R2"))
     for name in MAE.keys():
         print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format(name,np.mean(MAE[name]), np.mean(MSE[name]),np.mean(R2[name])))
-    plt.plot([x for x in range(1, 6)], scale_y.inverse_transform(y_test), marker=markers.pop(), label='True Label')
-    plt.legend(edgecolor='black', loc=4)  # 让图例标签展示
-    plt.xlabel(u"sample-k")  # X轴标签
-    plt.ylabel('dense')  # Y轴标签
-    plt.title('prediction on GI20')  # 标题
-    plt.show()
+
 
 def search_best_params(gridcv=None, datafilepath='./data/HRB95.txt'):
     x, y = loadXY(datafilepath)
@@ -205,9 +219,9 @@ seeds = [0,1,2,3,4,5,6,7,9,10,11,12,14,15,16,17,18,19,20,22,24,25,26,28,29,30,31
 266,267,268,270,271,272,273,275,276,277,278,279,280,281,282,283,284,286,287,288,289,290,291,292,293,294,295,296,297,299,]
 seeds=[234,235,236,237,238,239,240,242,243,244,245,246,247,248,249,250,251,252,254,255,256,258,259,260,261,262,263,264,265,
 266,267,268,270,271,272,273,275,276,277,278,279,280,281,282,283,284,286,287,288,289,290,291,292,293,294,295,296,297,299]
-seeds=[i for i in range(10)]
 # seeds=[None]
-seeds = [1]
+seeds=[i for i in range(10)]
+seeds = [1,22]
 if __name__ == '__main__':
     train(seeds, k=1,datafilepath='./data/midu.txt')
     # search_best_params()
