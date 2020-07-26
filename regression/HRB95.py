@@ -87,10 +87,10 @@ def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt'):
     if cv==1:
         cv = LeaveOneOut()
     models = [
-        # GridSearchCV(KNeighborsRegressor(), n_jobs=-1,
-        #                     param_grid={"n_neighbors": [3,5,10,13,17,25], "p": [2,4,6,8,10],
-        #                                 "weights": ['uniform', 'distance'], "leaf_size": [3,6,11,16,20,25]
-        #                          }),
+        GridSearchCV(KNeighborsRegressor(), n_jobs=-1,
+                            param_grid={"n_neighbors": [3,5,10,13,17,25], "p": [2,4,6,8,10],
+                                        "weights": ['uniform', 'distance'], "leaf_size": [3,6,11,16,20,25]
+                                 }),
         GridSearchCV(SVR(), param_grid={"C": np.logspace(0, 2, 4), "gamma": np.logspace(-2, 2, 7)},n_jobs=-1),
         RidgeCV(alphas=(0.1, 1.0, 10.0,100.0)),
         MLPRegressor(hidden_layer_sizes=(50,100,50),max_iter=500, random_state=seed),
@@ -99,10 +99,10 @@ def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt'):
 
         StackingRegressor(estimators=[
                 ("ridge", RidgeCV(alphas=(0.1, 1.0, 10.0, 100.0))),
-                # ("knn",  GridSearchCV(KNeighborsRegressor(), n_jobs=-1,
-                #             param_grid={"n_neighbors": [3,5,10,13,17,25], "p": [2,4,6,8,10],
-                #                         "weights": ['uniform', 'distance'], "leaf_size": [3,6,11,16,20,25]
-                #                  })),
+                ("knn",  GridSearchCV(KNeighborsRegressor(), n_jobs=-1,
+                            param_grid={"n_neighbors": [3,5,10,13,17,25], "p": [2,4,6,8,10],
+                                        "weights": ['uniform', 'distance'], "leaf_size": [3,6,11,16,20,25]
+                                 })),
                 ("gbdt",GradientBoostingRegressor(random_state=seed)),
                 ("RandomForest",RandomForestRegressor(random_state=seed)),
                 ("mlp", MLPRegressor(hidden_layer_sizes=(50,100,50),max_iter=700,random_state=seed)),
@@ -111,10 +111,10 @@ def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt'):
 
         StackingRegressor(estimators=[
                 ("ridge",RidgeCV(alphas=(0.1, 1.0, 10.0, 100.0))),
-                # ("knn",  GridSearchCV(KNeighborsRegressor(), cv=10, n_jobs=-1,
-                #             param_grid={"n_neighbors": [3,5,10,13,17,25], "p": [2,4,6,8,10],
-                #                         "weights": ['uniform', 'distance'], "leaf_size": [3,6,11,16,20,25]
-                #                  })),
+                ("knn",  GridSearchCV(KNeighborsRegressor(), cv=10, n_jobs=-1,
+                            param_grid={"n_neighbors": [3,5,10,13,17,25], "p": [2,4,6,8,10],
+                                        "weights": ['uniform', 'distance'], "leaf_size": [3,6,11,16,20,25]
+                                 })),
                 ("gbdt",GradientBoostingRegressor(random_state=seed)),
                 ("RandomForest",RandomForestRegressor(random_state=seed)),
                 ("mlp", MLPRegressor(hidden_layer_sizes=(50,100,50),max_iter=700,random_state=seed)),
@@ -123,7 +123,7 @@ def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt'):
 
     ]
     models_str = [
-        # 'KNNRegressor',
+        'KNNRegressor',
         'SVR',
         'RidgeCV',
         'MLPRegressor',
@@ -135,8 +135,8 @@ def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt'):
     #times次平均得分，
     MAE,MSE,R2={},{},{}
     for time,seed in enumerate(seeds):
-        print("-----第%d次(seed=%d)-----"%(time+1,seed))
-        print("{:20s}{:10s}{:10s}{:10s}".format("方法","MAE","MSE","R2"))
+        #print("-----第%d次(seed=%d,k=%d)-----"%(time+1,seed,k))
+        #print("{:20s}{:10s}{:10s}{:10s}".format("方法","MAE","MSE","R2"))
         x, y = loadXY(datafilepath)
         x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=5, random_state=seed, shuffle=True)
         for name, m in zip(models_str, models):
@@ -146,7 +146,7 @@ def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt'):
                 MSE[name] = []
             if not name in R2.keys() :
                 R2[name] = []
-            print("%18s"%name)
+            #print("%18s"%name)
             y_vals, y_val_p_s,mae_test,mse_test,r2_test= [], [],[],[],[]
             model = clone(m)
             # stacking模型，已经内置交叉验证
@@ -157,8 +157,10 @@ def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt'):
                 MAE[name] = np.append(MAE[name], mae(test_pred, y_test))
                 MSE[name] = np.append(MSE[name], mse(test_pred, y_test))
                 R2[name] = np.append(R2[name], model.score(x_test, y_test))
-                print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format("train", mae(train_pred,y_train), mse(train_pred,y_train), model.score(x_train,y_train)))
-                print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format("test", MAE[name][-1], MSE[name][-1], R2[name][-1]))
+                #print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format("train", mae(train_pred,y_train), mse(train_pred,y_train), model.score(x_train,y_train)))
+                #print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format("test", MAE[name][-1], MSE[name][-1], R2[name][-1]))
+                if R2[name][-1]>0.2:
+                    print(seed,end=',')
                 continue;
             # 交叉验证
             if k > 1:
@@ -177,18 +179,19 @@ def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt'):
                 'val':{'mae':mae(y_vals, y_val_p_s), 'mse': mse(y_vals, y_val_p_s), 'r2':r2_score(y_vals, y_val_p_s)},
                 'test':{'mae':mae_test.mean(),'mse':mse_test.mean(), 'r2':r2_test.mean()},
             }
-            print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format("val", matrix['val']['mae'], matrix['val']['mse'], matrix['val']['r2'],))
-            print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format("test", matrix['test']['mae'],matrix['test']['mse'],matrix['test']['r2']))
+            #print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format("val", matrix['val']['mae'], matrix['val']['mse'], matrix['val']['r2'],))
+            #print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format("test", matrix['test']['mae'],matrix['test']['mse'],matrix['test']['r2']))
             joblib.dump(model, 'save/%s%d.model' % (name,time))
             MAE[name] = np.append(MAE[name], matrix['test']['mae'])
             MSE[name] = np.append(MSE[name], matrix['test']['mse'])
             R2[name]  = np.append(R2[name],  matrix['test']['r2'])
-        print(end='\n') #所有模型交叉训练结束（一次） 每一次样本集不一样
+        #print(end='\n') #所有模型交叉训练结束（一次） 每一次样本集不一样
     #
-    print("---------%d次训练测试平均得分----------"%times)
-    print("{:20s}{:10s}{:10s}{:10s}".format("方法","MAE","MSE","R2"))
+    #print("---------%d次训练测试平均得分----------"%len(seeds))
+    #print("{:20s}{:10s}{:10s}{:10s}".format("方法","MAE","MSE","R2"))
     for name in MAE.keys():
-        print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format(name,np.mean(MAE[name]), np.mean(MSE[name]),np.mean(R2[name])))
+        pass
+        #print("{:20s}{:6.4f}{:10.4f}{:10.3f}".format(name,np.mean(MAE[name]), np.mean(MSE[name]),np.mean(R2[name])))
 
 
 def search_best_params(gridcv=None, datafilepath='./data/HRB95.txt'):
@@ -204,12 +207,12 @@ def search_best_params(gridcv=None, datafilepath='./data/HRB95.txt'):
     #                       param_grid={"alpha": [500, 100,10,1,0.1]
     #                                   })
     gridcv.fit(x, y)
-    print(gridcv.best_params_, '\n', gridcv.best_score_)
+    #print(gridcv.best_params_, '\n', gridcv.best_score_)
 
-
+seeds = [x for x in range(200)]
 if __name__ == '__main__':
-    time = 5 #不是训练次数，而是重新划分数据集重新训练测试次数
-    train(seeds=[1,2,3,4,5,6,7,8,9,10], k=5,datafilepath='./data/midu.txt')
+    # train(seeds=[1,2,3,4,5,], k=5,datafilepath='./data/HRB95.txt')
+    train(seeds=seeds, k=1,datafilepath='./data/HRB95.txt')
     # search_best_params()
 
 '''
@@ -217,7 +220,7 @@ scores=[]
 plt.cla()
 plt.close()
 # plt.figure()
-print('{:20s} {:10s} {:10s}'.format("算法", "Score", ""))
+#print('{:20s} {:10s} {:10s}'.format("算法", "Score", ""))
 x_train,x_test,y_train,y_test = train_test_split(x, y, test_size = 0.2, random_state=1)
 for name,model in zip(models_str,models):
 
@@ -238,8 +241,8 @@ for name,model in zip(models_str,models):
     plt.show()
 
 
-    print('{:20s} {:10s} {:10s}'.
+    #print('{:20s} {:10s} {:10s}'.
           format(name, str(score)[:5], str(r2_score(y_pred,y_test))[:5]))
 
-# print(scores)
+# #print(scores)
 '''
