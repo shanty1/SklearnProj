@@ -86,7 +86,7 @@ def loadXY(datafilepath):
     return x, y
 
 
-def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt', test_size=12):
+def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt', test_size=10):
     seed = None
     random.seed(seed)
     np.random.seed(seed)
@@ -212,7 +212,7 @@ def search_best_params(gridcv=None, datafilepath='./data/HRB95.txt'):
     gridcv.fit(x, y)
     print(gridcv.best_params_, '\n', gridcv.best_score_)
 
-seeds = [x for x in range(10)]
+seeds = [x for x in range(1,30)]
 # seeds = [2]
 if __name__ == '__main__':
     # train(seeds=[1,2,3,4,5,], k=5,datafilepath='./data/HRB95.txt')
