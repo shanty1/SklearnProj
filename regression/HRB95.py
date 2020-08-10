@@ -54,13 +54,13 @@ from sklearn.base import clone
 font2 = {
 'family' : 'Times New Roman',
 'weight' : 'normal',
-'size' : 15,
+'size' : 22,
 }
 font1 = {'family' : 'Times New Roman',
 'weight' : 'normal',
-'size' : 18,
+'size' : 28,
 }
-markers = ['h','s','<','>','1','2','3','4','8','p','d','^','+','x','^','o']*10000
+markers = ['4','8','p','d','h','s','<','>','1','2','3','^','+','x','^','o']*10000
 scale_x = StandardScaler()
 scale_y = StandardScaler()
 
@@ -87,7 +87,7 @@ def loadXY(datafilepath):
 
 
 def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt', test_size=10):
-    seed = None
+    seed = 1
     random.seed(seed)
     np.random.seed(seed)
     # data = np.loadtxt('./data/HRB95.txt', dtype=float, delimiter=',', skiprows=1)
@@ -129,15 +129,18 @@ def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt', test_size=10):
     #times次平均得分，
     MAE,MSE,R2={},{},{}
     for time,seed in enumerate(seeds):
-        print("-----第%d次(seed=%d,k=%d)-----"%(time+1,seed,k))
+        print("-----第%d次(seed=%s,k=%d)-----"%(time+1,seed,k))
         print("{:20s}{:10s}{:10s}{:10s}".format("方法","MAE","MSE","R2"))
         x, y = loadXY(datafilepath)
         x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_size, random_state=seed, shuffle=True)
-        plt.figure(time)
+        plt.figure(time,figsize=(10,10))
+        plt.tick_params(labelsize=18)
         # plt.xlim(0, 6)
         # plt.ylim(3, 7, 0.3)
-        plt.scatter([x for x in range(1, test_size+1)], scale_y.inverse_transform(y_test), marker='*', label='True Label', s=300)
-        for name, m in zip(models_str, models):
+        plt.scatter([x for x in range(1, test_size+1)], scale_y.inverse_transform(y_test), marker='*', label='True Label', s=250)
+
+        # plt.plot( scale_y.inverse_transform(y_test), scale_y.inverse_transform(y_test))
+        for index,name, m in zip(range(len(models_str)),models_str, models):
             if not name in MAE.keys() :
                 MAE[name] = []
             if not name in MSE.keys() :
@@ -181,8 +184,10 @@ def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt', test_size=10):
                 MAE[name] = np.append(MAE[name], matrix['test']['mae'])
                 MSE[name] = np.append(MSE[name], matrix['test']['mse'])
                 R2[name]  = np.append(R2[name],  matrix['test']['r2'])
-            plt.plot([x for x in range(1, test_size + 1)], scale_y.inverse_transform(model.predict(x_test)),marker=markers.pop(), label=name)
-            plt.legend(edgecolor='black', loc=4, prop=font2)  # 让图例标签展示
+            marker = 'X' if isinstance(model, StackingRegressor)  else markers.pop()
+            plt.plot([x for x in range(1, test_size + 1)], scale_y.inverse_transform(model.predict(x_test)), label=name, marker=marker )
+            # plt.scatter(scale_y.inverse_transform(y_test), scale_y.inverse_transform(model.predict(x_test)),marker=marker, label=name)
+            plt.legend(edgecolor='black', loc=8, prop=font2, ncol=3)  # 让图例标签展示
             plt.xlabel(u"Test Data",fontdict=font1)  # X轴标签
             plt.ylabel('Density',fontdict=font1)  # Y轴标签
             plt.title('Prediction on NS20',fontdict=font1)  # 标题
@@ -212,8 +217,9 @@ def search_best_params(gridcv=None, datafilepath='./data/HRB95.txt'):
     gridcv.fit(x, y)
     print(gridcv.best_params_, '\n', gridcv.best_score_)
 
-seeds = [x for x in range(1,30)]
-# seeds = [2]
+# seeds = [1,2,3,5,23,12,18,34,23,65,47,98,30,60,73,79,83,95,89,55,100]
+seeds = [65] #图
+# seeds = [None]
 if __name__ == '__main__':
     # train(seeds=[1,2,3,4,5,], k=5,datafilepath='./data/HRB95.txt')
     train(seeds=seeds, k=1,datafilepath='./data/HRB95.txt')
