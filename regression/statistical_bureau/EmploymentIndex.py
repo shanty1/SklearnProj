@@ -212,7 +212,7 @@ def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt',test_size=5, label_fl
 
 
 def search_best_params(gridcv=None, datafilepath='./data/HRB95.txt'):
-    x, y = loadXY(datafilepath , label_flag = '就业增长率')
+    x, y = loadXY(datafilepath , label_flag = '就业弹性系数')
     # gridcv = GridSearchCV(SVR(),cv=10,n_jobs=-1,
     #                     param_grid={"kernel": ("linear", 'rbf'),"C": np.logspace(0, 4, 10),
     #                                 "gamma": np.logspace(-3, 3, 10)})
