@@ -106,32 +106,32 @@ def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt',test_size=5, label_fl
     if cv==1:
         cv = LeaveOneOut()
     models = [
-        KNeighborsRegressor(leaf_size=3, n_neighbors= 2, p=1, weights='distance'),
-        GridSearchCV(SVR(), param_grid={"C": np.logspace(0, 2, 4), "gamma": np.logspace(-2, 2, 7)},n_jobs=-1),
-        RidgeCV(alphas=(0.1, 1.0, 10.0,100.0)),
-        MLPRegressor(hidden_layer_sizes=(200,500,100),max_iter=700, random_state=seed),
-        RandomForestRegressor(random_state=seed),
-        GradientBoostingRegressor(random_state=seed),
+        # KNeighborsRegressor(leaf_size=3, n_neighbors= 2, p=1, weights='distance'),
+        # GridSearchCV(SVR(), param_grid={"C": np.logspace(0, 2, 4), "gamma": np.logspace(-2, 2, 7)},n_jobs=-1),
+        # RidgeCV(alphas=(0.1, 1.0, 10.0,100.0)),
+        MLPRegressor(hidden_layer_sizes=(5),random_state=seed),
+        # RandomForestRegressor(random_state=seed),
+        # GradientBoostingRegressor(random_state=seed),
 
-        StackingRegressor(estimators=[
-                ('KNN', KNeighborsRegressor(leaf_size=3, n_neighbors= 2, p=1, weights='distance')),
-                ("ridge", RidgeCV(alphas=(0.1, 1.0, 10.0, 100.0))),
-                ("gbdt",GradientBoostingRegressor(random_state=seed)),
-                ("RandomForest",RandomForestRegressor(random_state=seed)),
-                ("mlp", MLPRegressor(hidden_layer_sizes=(50,100,50),max_iter=700,random_state=seed)),
-                ("svr", GridSearchCV(SVR(), n_jobs=-1, param_grid={"C": np.logspace(0, 2, 4), "gamma": np.logspace(-2, 2, 7)})),
-        ],  final_estimator=RidgeCV(alphas=(0.1, 1.0, 10.0, 100.0)), n_jobs=-1,cv=cv),
+        # StackingRegressor(estimators=[
+                # ( 'KNN', KNeighborsRegressor(leaf_size=3, n_neighbors= 2, p=1, weights='distance')),
+                # ("ridge", RidgeCV(alphas=(0.1, 1.0, 10.0, 100.0))),
+                # ("gbdt",GradientBoostingRegressor(random_state=seed)),
+                # ("RandomForest",RandomForestRegressor(random_state=seed)),
+                # ("mlp", MLPRegressor(hidden_layer_sizes=(50,100,50),max_iter=700,random_state=seed)),
+        #         ("svr", GridSearchCV(SVR(), n_jobs=-1, param_grid={"C": np.logspace(0, 2, 4), "gamma": np.logspace(-2, 2, 7)})),
+        # ],  final_estimator=RidgeCV(alphas=(0.1, 1.0, 10.0, 100.0)), n_jobs=-1,cv=cv),
        
 
     ]
     models_str = [
-        'KNeighborsRegressor',
-        'SVR',
-        'RidgeCV',
+        # 'KNeighborsRegressor',
+        # 'SVR',
+        # 'RidgeCV',
         'MLP',
-        'RF',
-        'GBDT',
-        'Stacking',
+        # 'RF',
+        # 'GBDT',
+        # 'Stacking',
     ]
 
     #times次平均得分，
@@ -141,6 +141,7 @@ def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt',test_size=5, label_fl
         print("{:20s}{:10s}{:10s}{:10s}".format("方法","MAE","MSE","R2"))
         x, y = loadXY(datafilepath, label_flag)
         x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_size, random_state=seed, shuffle=True)
+        x_train, y_train = x, y
         plt.figure(time, figsize=(10, 10))
         plt.tick_params(labelsize=18)
         # plt.xlim(0, 6)
@@ -193,7 +194,15 @@ def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt',test_size=5, label_fl
                 MAE[name] = np.append(MAE[name], matrix['test']['mae'])
                 MSE[name] = np.append(MSE[name], matrix['test']['mse'])
                 R2[name]  = np.append(R2[name],  matrix['test']['r2'])
+            print(model.coefs_)
+            print(len(model.coefs_))
+            print(len(model.coefs_[0]))
 
+            plt.matshow(model.coefs_[0], cmap='hot')
+            plt.colorbar()
+            plt.show()
+
+            '''
             plt.plot([x for x in range(1, test_size + 1)], scale_y.inverse_transform(model.predict(x_test)),
                      marker='o', linestyle=':', label=name,c=colors.pop())
             # plt.scatter([x+i*0.2 for x in range(1, test_size + 1)], scale_y.inverse_transform(model.predict(x_test)),
@@ -205,6 +214,7 @@ def train(seeds=[1], k=5,  datafilepath='./data/HRB95.txt',test_size=5, label_fl
         plt.ioff()
         print() #所有模型交叉训练结束（一次） 每一次样本集不一样
         plt.show()
+        '''
     print("---------%d次训练测试平均得分----------"%len(seeds))
     print("{:20s}{:10s}{:10s}{:10s}".format("方法","MAE","MSE","R2"))
     for name in MAE.keys():
@@ -231,10 +241,10 @@ seeds = [0,1,2,3,4,5,6,7,10,11,12,16,25,26,28,29,30,31,32,33,34,35,36,37,38,39,4
 # seeds=[234,235,236,237,238,239,240,242,243,244,245,246,247,248,249,250,251,252,254,255,256,258,259,260,261,262,263,264,265,
 # 266,267,268,270,271,272,273,275,276,277,278,279,280,281,282,283,284,286,287,288,289,290,291,292,293,294,295,296,297,299]
 # seeds=[None]
-seeds=[i for i in range(100)]
+seeds=[i for i in range(1)]
 # seeds = [289]
 if __name__ == '__main__':
-    train(seeds, k=1,datafilepath='./data/data2016',test_size=5, label_flag = '就业增长率')
+    train(seeds, k=1,datafilepath='./data/data2016',test_size=20, label_flag = '就业增长率')
 #     search_best_params(gridcv=None, datafilepath='./data/HRB95.txt')
 
 
